@@ -1,25 +1,39 @@
 package main
 
 import (
-	"log"
+	"flag"
+	"log/slog"
 	"net/http"
+	"os"
 )
 
 func main() {
+
+	addr := flag.String("addr", ":4000", "HTTP network address")
+	flag.Parse()
+
+	// slog.New() function intializes a new structured logger
+	// which writes to the standard output stream and uses default settings
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	mux := http.NewServeMux()
 
-	// Create a file server which serves files out of the "./ui/static" directory.
 	fileServer := http.FileServer(http.Dir("./ui/static"))
-
-	// Use the mux.Handle() function to register the file server as the handler for all URL paths that start with "/static/".
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
 	mux.HandleFunc("/", home)
 	mux.HandleFunc("/snippet/view", snippetView)
 	mux.HandleFunc("/snippet/create", snippetCreate)
 
-	log.Println("Starting server on :4000")
+	// the Info() method to log the starting server message Info severity
+	// alonmg with the listen and server attribute
+	logger.Info("starting server", "addr", *addr)
 
-	err := http.ListenAndServe(":4000", mux)
-	log.Fatal(err)
+	err := http.ListenAndServe(*addr, mux)
+	// the Error() method to log any error message returned by listen and serve
+	// http.ListenAndServe() at Error severity
+	// and then call the os.Exit(1) to terminate the application with exit code 1
+	logger.Error(err.Error())
+
+	os.Exit(1)
 }

@@ -7,6 +7,10 @@ import (
 	"os"
 )
 
+type application struct {
+	logger *slog.Logger
+}
+
 func main() {
 
 	addr := flag.String("addr", ":4000", "HTTP network address")
@@ -16,20 +20,16 @@ func main() {
 	// which writes to the standard output stream and uses default settings
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	mux := http.NewServeMux()
+	//Here I will intilize a new instance of the application struct
+	// the application struct will containt the dependencies for the application
+	// the dependencies that we have thus far
+	app := &application{
+		logger: logger,
+	}
 
-	fileServer := http.FileServer(http.Dir("./ui/static"))
-	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
-
-	mux.HandleFunc("/", home)
-	mux.HandleFunc("/snippet/view", snippetView)
-	mux.HandleFunc("/snippet/create", snippetCreate)
-
-	// the Info() method to log the starting server message Info severity
-	// alonmg with the listen and server attribute
 	logger.Info("starting server", "addr", *addr)
 
-	err := http.ListenAndServe(*addr, mux)
+	err := http.ListenAndServe(*addr, app.routes())
 	// the Error() method to log any error message returned by listen and serve
 	// http.ListenAndServe() at Error severity
 	// and then call the os.Exit(1) to terminate the application with exit code 1

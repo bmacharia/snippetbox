@@ -1,39 +1,62 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"log/slog"
 	"net/http"
 	"os"
+
+	// this imports the models package that we just created
+	"snippetbox.bmacharia/internal/models"
+	// main.go does not directly use the mysql driver, but it is required to register the driver with the database/sql package
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type application struct {
-	logger *slog.Logger
+	logger   *slog.Logger
+	snippets *models.SnippetModel
 }
 
 func main() {
-
 	addr := flag.String("addr", ":4000", "HTTP network address")
+	dsn := flag.String("dsn", "web:pass@/snippetbox?parseTime=true", "MySQL data source name")
 	flag.Parse()
 
-	// slog.New() function intializes a new structured logger
-	// which writes to the standard output stream and uses default settings
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	//Here I will intilize a new instance of the application struct
-	// the application struct will containt the dependencies for the application
-	// the dependencies that we have thus far
+	// create a connection pool for future use
+	db, err := openDB(*dsn)
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	defer db.Close()
+
 	app := &application{
-		logger: logger,
+		logger:   logger,
+		snippets: &models.SnippetModel{DB: db},
 	}
 
 	logger.Info("starting server", "addr", *addr)
 
-	err := http.ListenAndServe(*addr, app.routes())
-	// the Error() method to log any error message returned by listen and serve
-	// http.ListenAndServe() at Error severity
-	// and then call the os.Exit(1) to terminate the application with exit code 1
+	err = http.ListenAndServe(*addr, app.routes())
 	logger.Error(err.Error())
-
 	os.Exit(1)
+}
+
+// openDB() function wraps sql.Open() and sql.Ping() methods to create a connection pool
+func openDB(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	// use the db.Ping() method to check if a connection can be made to the database
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }

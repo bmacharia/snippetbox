@@ -73,6 +73,7 @@ func (m *SnippetModel) Latest() ([]Snippet, error) {
 	WHERE expires > UTC_TIMESTAMP() ORDER BY created DESC LIMIT 10`
 
 	// use the Query() method on the connection pool to execute our SQL statement
+
 	rows, err := m.DB.Query(stmt)
 	if err != nil {
 		return nil, err

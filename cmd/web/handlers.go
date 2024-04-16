@@ -22,9 +22,29 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, snippet := range snippets {
-		fmt.Fprintf(w, "%v\n", snippet)
+	files := []string{
+		"./ui/html/base.tmpl",
+		"./ui/html/partials/nav.tmpl",
+		"./ui/html/pages/home.tmpl",
 	}
+
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+	// Create an instance of the templateData struct holding a slice of snippets
+	data := templateData{
+		Snippets: snippets,
+	}
+
+	// Pass in the templateData struct when executing the template
+	err = ts.ExecuteTemplate(w, "base", data)
+	if err != nil {
+		app.serverError(w, r, err)
+
+	}
+
 }
 
 //Intialize a slice containing the paths to the two files

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"text/template"
 
 	"snippetbox.bmacharia/internal/models"
 )
@@ -22,50 +21,12 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files := []string{
-		"./ui/html/base.tmpl",
-		"./ui/html/partials/nav.tmpl",
-		"./ui/html/pages/home.tmpl",
-	}
-
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-	// Create an instance of the templateData struct holding a slice of snippets
-	data := templateData{
+	// use of the new render helper function
+	app.render(w, r, http.StatusOK, "home.tmpl", templateData{
 		Snippets: snippets,
-	}
-
-	// Pass in the templateData struct when executing the template
-	err = ts.ExecuteTemplate(w, "base", data)
-	if err != nil {
-		app.serverError(w, r, err)
-
-	}
+	})
 
 }
-
-//Intialize a slice containing the paths to the two files
-// the file containng our base template must be the **first** file in the slice
-//	files := []string{
-//		"./ui/html/base.tmpl",
-//		"./ui/html/partials/nav.tmpl",
-//		"./ui/html/pages/home.tmpl",
-//	}
-//
-//	ts, err := template.ParseFiles(files...)
-//	if err != nil {
-//		app.serverError(w, r, err)
-//		return
-//	}
-//	// the ExecuteTemplate methid is used to write the content of the "base" template
-//	err = ts.ExecuteTemplate(w, "base", nil)
-//	if err != nil {
-//		app.serverError(w, r, err)
-//	}
-//}
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
@@ -84,29 +45,11 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files := []string{
-		"./ui/html/base.tmpl",
-		"./ui/html/partials/nav.tmpl",
-		"./ui/html/pages/view.tmpl",
-	}
-
-	// Now the files need to be parsed
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	// an instance of the templateData struct is created holding the snippet data
-	data := templateData{
+	// use of the new render helper function
+	app.render(w, r, http.StatusOK, "view.tmpl", templateData{
 		Snippet: snippet,
-	}
+	})
 
-	// Execute the template set, passing in the snippet data
-	err = ts.ExecuteTemplate(w, "base", data)
-	if err != nil {
-		app.serverError(w, r, err)
-	}
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {

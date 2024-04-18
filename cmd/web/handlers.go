@@ -20,11 +20,13 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, r, err)
 		return
 	}
+	//call the newTemplateData helper function to get templateData struct
+	// containing the current year, and it to the snippets slice
+	data := app.newTemplateData(r)
+	data.Snippets = snippets
 
-	// use of the new render helper function
-	app.render(w, r, http.StatusOK, "home.tmpl", templateData{
-		Snippets: snippets,
-	})
+	// pass the data to the render functon
+	app.render(w, r, http.StatusOK, "home.tmpl", data)
 
 }
 
@@ -45,10 +47,11 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data := app.newTemplateData(r)
+	data.Snippet = snippet
+
 	// use of the new render helper function
-	app.render(w, r, http.StatusOK, "view.tmpl", templateData{
-		Snippet: snippet,
-	})
+	app.render(w, r, http.StatusOK, "view.tmpl", data)
 
 }
 

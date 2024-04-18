@@ -8,14 +8,28 @@ package main
 import (
 	"html/template"
 	"path/filepath"
+	"time"
 
 	"snippetbox.bmacharia/internal/models"
 )
 
 // define a templateData type to act as a holding structure for any dynamic data that I want to pass to my HTML templates
 type templateData struct {
-	Snippet  models.Snippet
-	Snippets []models.Snippet
+	CurrentYear int
+	Snippet     models.Snippet
+	Snippets    []models.Snippet
+}
+
+// create a function that returns the date in a human friendly format
+// this will represent a time.Time object
+func humanDate(t time.Time) string {
+	return t.Format("02 Jan 2006 at 15:04")
+}
+
+// intialize a template.FuncMap object and then populate it with the humanDate function
+// this is a string-keyed map which acts as a loolkup between the names of the functions that I want to use in my templates
+var functions = template.FuncMap{
+	"humanDate": humanDate,
 }
 
 func newTemplateCache() (map[string]*template.Template, error) {
@@ -35,13 +49,13 @@ func newTemplateCache() (map[string]*template.Template, error) {
 		name := filepath.Base(page)
 
 		// Pares the base template file into a tepmlate set
-		ts, err := template.ParseFiles("./ui/html/partials/*.tmpl")
+		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/base.tmpl")
 		if err != nil {
 			return nil, err
 		}
 
 		// Call ParsGlob() * on this template set to add any partials
-		ts, err = ts.ParseGlob("./ui/html/pages/*.tmpl")
+		ts, err = ts.ParseGlob("./ui/html/partials/*.tmpl")
 		if err != nil {
 			return nil, err
 

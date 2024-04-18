@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"runtime/debug"
+	"time"
 )
 
 // the serverError helper writes log entry at Error level(including the request
@@ -47,12 +49,27 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, status in
 
 	}
 
-	// Write out the provided HTTP status code (200 OK, 400 Bad Request)
-	w.WriteHeader(status)
+	// a new byte buffer
+	buf := new(bytes.Buffer)
 
-	err := ts.ExecuteTemplate(w, "base", data)
+	// write the template into the buffer instead of the http.ResponseWriter
+	err := ts.ExecuteTemplate(buf, "base", data)
 	if err != nil {
 		app.serverError(w, r, err)
+		return
 	}
 
+	// if the template is written to the buffer without error
+	// write the http status code to the http.ResponseWriter
+	w.WriteHeader(status)
+
+	// write the contens of the buffer to the http.ResponseWriter
+	buf.WriteTo(w)
+
+}
+
+func (app *application) newTemplateData(r *http.Request) templateData {
+	return templateData{
+		CurrentYear: time.Now().Year(),
+	}
 }

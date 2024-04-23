@@ -61,13 +61,29 @@ func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	// no longer have to check if requet method is a POST, it is done automatically by the httprouter
+	//r.ParseForm() adds anu data to POST request bodies to the r.PostForm map
+	//if there any errors, we use our app.clientError helper to send a 400 Bad Request
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
 
-	title := "O snail"
-	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n- Kobayashi Issa"
-	expires := "7"
+	//use r.PostForm() method to retrieve the title and content
+	// from the r.PostForm map
+	title := r.PostForm.Get("title")
+	content := r.PostForm.Get("content")
+	expires := r.PostForm.Get("expires")
 
-	// pass the data to the Insert() method on the SnippetModel
+	// manually convert form data into an integer using the strcoonv.Atoi(), and send a  400 Bad Request if it fails
+	//
+	//expires, err := strconv.Atoi(r.PostForm.Get("expires"))
+	//if err != nil {
+	//	app.clientError(w, http.StatusBadRequest)
+	//	return
+	//
+	//}
+
 	id, err := app.snippets.Insert(title, content, expires)
 	if err != nil {
 		app.serverError(w, r, err)

@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/julienschmidt/httprouter"
+
 	"snippetbox.bmacharia/internal/models"
 )
 
@@ -69,7 +72,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	//use r.PostForm() method to retrieve the title and content
+	//use r.PostForm() method to retrieve the title and `content`
 	// from the r.PostForm map
 	title := r.PostForm.Get("title")
 	content := r.PostForm.Get("content")
@@ -83,6 +86,35 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	//	return
 	//
 	//}
+
+	// Intialize a map to hold any validation errors
+	fieldErrors := make(map[string]string)
+
+	// Check that the title value is not blank and is not more than 100 character long
+	// if it fails either of those checks, add a message to the fieldErrors map
+	// using the field name as the key
+	if strings.TrimSpace(title) == "" {
+		fieldErrors["title"] = "Title cannot be blank"
+	} else if utf8.RuneCountInString(title) > 100 {
+		fieldErrors["title"] = "Title cannot be longer than 100 characters"
+	}
+
+	// Check the the Content value is not blank
+	if strings.TrimSpace(content) == "" {
+		fieldErrors["content"] = "This field cannot be blank"
+	}
+
+	// Check that the expires value is either 1, 7, or 365
+	if expires != "1" && expires != "7" && expires != "365" {
+		fieldErrors["expires"] = "this field must be 1, 7, or 365"
+	}
+
+	// if there are any errors, dump them in a plain text http response and return the from handler
+	if len(fieldErrors) > 0 {
+		fmt.Fprint(w, fieldErrors)
+		return
+
+	}
 
 	id, err := app.snippets.Insert(title, content, expires)
 	if err != nil {

@@ -18,6 +18,7 @@ type templateData struct {
 	CurrentYear int
 	Snippet     models.Snippet
 	Snippets    []models.Snippet
+	Form        any
 }
 
 // create a function that returns the date in a human friendly format

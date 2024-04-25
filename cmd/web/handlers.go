@@ -13,6 +13,13 @@ import (
 	"snippetbox.bmacharia/internal/models"
 )
 
+type snippetCreateForm struct {
+	Title       string
+	Content     string
+	Expires     int
+	FieldErrors map[string]string
+}
+
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 	snippets, err := app.snippets.Latest()
@@ -60,63 +67,61 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
 
+	data.Form = snippetCreateForm{
+		Expires: 365,
+	}
+
 	app.render(w, r, http.StatusOK, "create.tmpl", data)
 }
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	//r.ParseForm() adds anu data to POST request bodies to the r.PostForm map
-	//if there any errors, we use our app.clientError helper to send a 400 Bad Request
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	//use r.PostForm() method to retrieve the title and `content`
-	// from the r.PostForm map
-	title := r.PostForm.Get("title")
-	content := r.PostForm.Get("content")
-	expires := r.PostForm.Get("expires")
+	//Get the expires value from the form as normal
+	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
 
-	// manually convert form data into an integer using the strcoonv.Atoi(), and send a  400 Bad Request if it fails
-	//
-	//expires, err := strconv.Atoi(r.PostForm.Get("expires"))
-	//if err != nil {
-	//	app.clientError(w, http.StatusBadRequest)
-	//	return
-	//
-	//}
-
-	// Intialize a map to hold any validation errors
-	fieldErrors := make(map[string]string)
-
-	// Check that the title value is not blank and is not more than 100 character long
-	// if it fails either of those checks, add a message to the fieldErrors map
-	// using the field name as the key
-	if strings.TrimSpace(title) == "" {
-		fieldErrors["title"] = "Title cannot be blank"
-	} else if utf8.RuneCountInString(title) > 100 {
-		fieldErrors["title"] = "Title cannot be longer than 100 characters"
+		return
 	}
 
-	// Check the the Content value is not blank
-	if strings.TrimSpace(content) == "" {
-		fieldErrors["content"] = "This field cannot be blank"
+	// Create an instance of the snippetCreateForm struct containing the form data
+	form := snippetCreateForm{
+		Title:       r.PostForm.Get("title"),
+		Content:     r.PostForm.Get("content"),
+		Expires:     expires,
+		FieldErrors: make(map[string]string),
 	}
 
-	// Check that the expires value is either 1, 7, or 365
-	if expires != "1" && expires != "7" && expires != "365" {
-		fieldErrors["expires"] = "this field must be 1, 7, or 365"
+	// update the validation checks so that they operate on the snippetCreateForm instance
+	if strings.TrimSpace(form.Title) == "" {
+		form.FieldErrors["title"] = "This filed cannot be blank"
+	} else if utf8.RuneCountInString(form.Title) > 100 {
+		form.FieldErrors["title"] = "Title cannot be longer than 100 characters"
+	}
+
+	if strings.TrimSpace(form.Content) == "" {
+		form.FieldErrors["content"] = "This field cannot be blank"
+	}
+
+	if form.Expires != 1 && form.Expires != 7 && form.Expires != 365 {
+		form.FieldErrors["expires"] = "This field must be 1, 7, or 365"
 	}
 
 	// if there are any errors, dump them in a plain text http response and return the from handler
-	if len(fieldErrors) > 0 {
-		fmt.Fprint(w, fieldErrors)
+	if len(form.FieldErrors) > 0 {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, r, http.StatusUnprocessableEntity, "create.tmpl", data)
 		return
 
 	}
 
-	id, err := app.snippets.Insert(title, content, expires)
+	id, err := app.snippets.Insert(form.Title, form.Content, "expires")
 	if err != nil {
 		app.serverError(w, r, err)
 		return

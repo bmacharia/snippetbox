@@ -5,19 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/julienschmidt/httprouter"
 	"snippetbox.bmacharia/internal/models"
+	"snippetbox.bmacharia/internal/validator"
 )
-
-type snippetCreateForm struct {
-	Title       string
-	Content     string
-	Expires     int
-	FieldErrors map[string]string
-}
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
@@ -26,8 +18,7 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, r, err)
 		return
 	}
-	//call the newTemplateData helper function to get templateData struct
-	// containing the current year, and it to the snippets slice
+
 	data := app.newTemplateData(r)
 	data.Snippets = snippets
 
@@ -63,6 +54,13 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 
 }
 
+type snippetCreateForm struct {
+	Title   string
+	Content string
+	Expires int
+	validator.Validator
+}
+
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
 
@@ -73,7 +71,7 @@ func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	app.render(w, r, http.StatusOK, "create.tmpl", data)
 }
 
-func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
+func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
@@ -88,42 +86,24 @@ func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create an instance of the snippetCreateForm struct containing the form data
-	title := r.PostForm.Get("title")
-	content := r.PostForm.Get("content")
-	expires := r.PostForm.Get("expires")
-
-	errors := make(map[string]string)
-
-	// update the validation checks so that they operate on the snippetCreateForm instance
-	if strings.TrimSpace(title) == "" {
-		errors["title"] = "This filed cannot be blank"
-	} else if utf8.RuneCountInString(form.Title) > 100 {
-		errors["title"] = "This field is too long (maximum is 100 characters)"
+	form := snippetCreateForm{
+		Title:   r.PostForm.Get("title"),
+		Content: r.PostForm.Get("content"),
+		Expires: expires,
 	}
 
-	if strings.TrimSpace(content) == "" {
-		form.FieldErrors["content"] = "This field cannot be blank"
-	}
+	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
+	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
+	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
+	form.CheckField(validator.PermittedValue(form.Expires, 1, 365), "expires", "This field equal 1, 7, 365")
 
-	if strings.TrimSpace(expires) == "" {
-		form.FieldErrors["expires"] = "This field cannot be blank"
-	} else if expires != "365" && expires != "7" && expires != "1" {
-		errors["expires"] = "This field is invalid"
-	}
-
-	// if there are any errors, dump them in a plain text http response and return the from handler
-	if len(errors) > 0 {
-		app.render(w,r "create.tmpl", &templateData{
-			FormErrors: errors,
-			FormData: r.PostForm,
-
-		})
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, r, http.StatusBadRequest, "create.tmpl", data)
 		return
-
 	}
-
-	id, err := app.snippets.Insert(title, content, expires)
+	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
 	if err != nil {
 		app.serverError(w, r, err)
 		return

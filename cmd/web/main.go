@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"os"
 
-	// this imports the models package that we just created
 	"snippetbox.bmacharia/internal/models"
-	// main.go does not directly use the mysql driver, but it is required to register the driver with the database/sql package
+
+	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -18,6 +18,7 @@ type application struct {
 	logger        *slog.Logger
 	snippets      *models.SnippetModel
 	templateCache map[string]*template.Template
+	formDecoder   *form.Decoder
 }
 
 func main() {
@@ -44,10 +45,13 @@ func main() {
 
 	}
 
+	formDecoder := form.NewDecoder()
+
 	app := &application{
 		logger:        logger,
 		snippets:      &models.SnippetModel{DB: db},
 		templateCache: templateCache,
+		formDecoder:   formDecoder,
 	}
 
 	logger.Info("starting server", "addr", *addr)

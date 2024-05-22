@@ -32,3 +32,6 @@ As we add more pages to our web application, there will be some shared boilerpla
 
 the path to the `http.Dir` function is realtive to the project directory root
 `fileServer := http.FileServer(http.Dir("./ui/static"))`
+
+Then I will use the mux.Handle() function to register the file server as the handler for all theURL paths that start woth "/static/"
+prefix before the request reaches the file server.
